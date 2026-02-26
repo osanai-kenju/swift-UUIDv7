@@ -9,8 +9,6 @@ import Foundation
 import Synchronization // Swift 6+ & iOS 18+ / macOS 15+
 
 public enum UUIDv7Generator {
-    // 64ビットの共有状態 (Timestamp 48bit + Sequence 16bit)
-    // nonisolated でアクセスするため、Atomic で保護
     private static let state = Atomic<UInt64>(0)
     
     private static func currentUnixMillis() -> UInt64 {
@@ -20,20 +18,14 @@ public enum UUIDv7Generator {
     }
 
     public static func generate() -> UUID {
+        var current = state.load(ordering: .relaxed)
         var nextTs: UInt64 = 0
         var nextSeq: UInt64 = 0
-        
-        // CAS (Compare-and-Swap) ループ
-//        state.withAttributes { _ in } // メモリバリアの明示（必要に応じて）
-        
-        // 現在の値を読み取って更新を試みる
-        var current = state.load(ordering: .relaxed)
         
         while true {
             let lastTs = current >> 12
             let lastSeq = current & 0x0FFF
             
-//            let now = UInt64(Date().timeIntervalSince1970 * 1000.0)
             let now = currentUnixMillis()
             
             if now > lastTs {
@@ -87,33 +79,4 @@ public enum UUIDv7Generator {
             UInt8(rand & 0xFF)
         ))
     }
-    
-//    private static func finalize(timestamp: UInt64, sequence: UInt16) -> UUID {
-//        var rng = SystemRandomNumberGenerator()
-//        let rand = rng.next()
-//        
-//        // 高速 CSPRNG
-//        var rand: UInt64 = 0
-//        arc4random_buf(&rand, MemoryLayout.size(ofValue: rand))
-//        
-//        // RFC 9562 準拠のビットレイアウト構築
-//        return UUID(uuid: (
-//            UInt8((timestamp >> 40) & 0xFF),
-//            UInt8((timestamp >> 32) & 0xFF),
-//            UInt8((timestamp >> 24) & 0xFF),
-//            UInt8((timestamp >> 16) & 0xFF),
-//            UInt8((timestamp >> 8) & 0xFF),
-//            UInt8(timestamp & 0xFF),
-//            UInt8(0x70 | ((sequence >> 8) & 0x0F)), // Version 7
-//            UInt8(sequence & 0xFF),
-//            UInt8(0x80 | ((rand >> 56) & 0x3F)), // Variant 10
-//            UInt8((rand >> 48) & 0xFF),
-//            UInt8((rand >> 40) & 0xFF),
-//            UInt8((rand >> 32) & 0xFF),
-//            UInt8((rand >> 24) & 0xFF),
-//            UInt8((rand >> 16) & 0xFF),
-//            UInt8((rand >> 8) & 0xFF),
-//            UInt8(rand & 0xFF)
-//        ))
-//    }
 }
