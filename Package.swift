@@ -9,6 +9,12 @@ let package = Package(
         .iOS(.v18),
         .macOS(.v15)
     ],
+    products: [
+        .library(
+            name: "UUIDv7",
+            targets: ["UUIDv7"]
+        )
+    ],
     targets: [
         .target(
             name: "UUIDv7"
