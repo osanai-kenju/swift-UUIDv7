@@ -8,10 +8,6 @@
 import Foundation
 
 extension UUID {
-    public static func v7() -> UUID {
-        UUIDv7Generator.generate()
-    }
-    
     public var timeStamp: Date? {
         let bytes = self.uuid
         
