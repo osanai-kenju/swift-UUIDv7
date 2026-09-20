@@ -1,0 +1,21 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Test (debug)
+        run: swift test
+
+      - name: Test (release)
+        run: swift test -c release -Xswiftc -enable-testing
