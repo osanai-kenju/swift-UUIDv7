@@ -89,10 +89,10 @@ struct UUIDv7Tests {
         #expect(Set(all).count == perTask * taskCount)
     }
     
-    // 7. バージョン7以外のUUIDではtimeStampがnilを返す
-    @Test func timeStampIsNilForNonV7() {
+    // 7. バージョン7以外のUUIDではtimestampがnilを返す
+    @Test func timestampIsNilForNonV7() {
         let id = UUID()
-        #expect(id.timeStamp == nil)
+        #expect(id.timestamp == nil)
         #expect(id.unixMilliseconds == nil)
     }
     
