@@ -18,7 +18,7 @@ let package = Package(
     targets: [
         .target(
             name: "UUIDv7"
-        )
+        ),
         .testTarget(
             name: "UUIDv7Tests",
             dependencies: ["UUIDv7"]
