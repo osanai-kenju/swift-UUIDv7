@@ -8,16 +8,21 @@
 import Foundation
 import Synchronization // Swift 6+ & iOS 18+ / macOS 15+
 
-public enum UUIDv7Generator {
-    private static let state = Atomic<UInt64>(0)
-    
-    private static func currentUnixMillis() -> UInt64 {
+final class UUIDv7Core: Sendable {
+    private let state = Atomic<UInt64>(0)
+    private let clock: @Sendable () -> UInt64
+
+    init(clock: @escaping @Sendable () -> UInt64 = UUIDv7Core.systemClock) {
+        self.clock = clock
+    }
+
+    static func systemClock() -> UInt64 {
         var ts = timespec()
         clock_gettime(CLOCK_REALTIME, &ts)
         return UInt64(ts.tv_sec) * 1000 + UInt64(ts.tv_nsec) / 1_000_000
     }
 
-    public static func generate() -> UUID {
+    func generate() -> UUID {
         var current = state.load(ordering: .relaxed)
         var nextTs: UInt64 = 0
         var nextSeq: UInt64 = 0
@@ -26,7 +31,7 @@ public enum UUIDv7Generator {
             let lastTs = current >> 12
             let lastSeq = current & 0x0FFF
             
-            let now = currentUnixMillis()
+            let now = clock()
             
             if now > lastTs {
                 nextTs = now
@@ -78,5 +83,13 @@ public enum UUIDv7Generator {
             UInt8((rand >> 8) & 0xFF),
             UInt8(rand & 0xFF)
         ))
+    }
+}
+
+public enum UUIDv7Generator {
+    private static let core = UUIDv7Core()
+
+    public static func generate() -> UUID {
+        core.generate()
     }
 }
