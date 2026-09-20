@@ -17,6 +17,7 @@ final class FakeClock: Sendable {
     func set(_ value: UInt64) { ms.store(value, ordering: .relaxed) }
 }
 
+// for i in 1 2 3 4 5 6 7 8 9 10; do swift test -c release -Xswiftc -enable-testingが通ったので一旦コメントアウトしておく
 //@Suite(.serialized)
 struct UUIDv7Tests {
     // 1. 生成したUUIDのバージョンが7になっている
@@ -89,10 +90,14 @@ struct UUIDv7Tests {
         #expect(Set(all).count == perTask * taskCount)
     }
     
-    // 7. バージョン7以外のUUIDではtimeStampがnilを返す
-    @Test func timeStampIsNilForNonV7() {
+    // 7. バージョン7以外のUUIDではtimestampがnilを返す
+    @Test func timestampIsNilForNonV7() {
         let id = UUID()
+<<<<<<< HEAD
+        #expect(id.timestamp == nil)
+=======
         #expect(id.timeStamp == nil)
+>>>>>>> origin/main
         #expect(id.unixMilliseconds == nil)
     }
     

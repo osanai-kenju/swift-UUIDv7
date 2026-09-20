@@ -8,7 +8,9 @@
 import Foundation
 
 extension UUID {
-    public var timeStamp: Date? {
+    /// UUIDv7に埋め込まれた生成時刻(Unixエポックからの絶対時刻)。v7以外はnil。
+    /// ミリ秒未満の精度はない。厳密な整数値が必要なら `unixMilliseconds` を使う。
+    public var timestamp: Date? {
         guard let millis = unixMilliseconds else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(millis) / 1000)
     }
