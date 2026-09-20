@@ -93,7 +93,11 @@ struct UUIDv7Tests {
     // 7. バージョン7以外のUUIDではtimestampがnilを返す
     @Test func timestampIsNilForNonV7() {
         let id = UUID()
+<<<<<<< HEAD
         #expect(id.timestamp == nil)
+=======
+        #expect(id.timeStamp == nil)
+>>>>>>> origin/main
         #expect(id.unixMilliseconds == nil)
     }
     
