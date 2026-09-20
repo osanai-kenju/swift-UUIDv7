@@ -5,11 +5,19 @@
 //  Created by 長内健樹 on 2026/09/20.
 //
 
+import Foundation
+import Synchronization
 import Testing
 @testable import UUIDv7
-import Foundation
 
-@Suite(.serialized)
+final class FakeClock: Sendable {
+    private let ms: Atomic<UInt64>
+    init(_ initial: UInt64) { ms = Atomic(initial) }
+    func now() -> UInt64 { ms.load(ordering: .relaxed) }
+    func set(_ value: UInt64) { ms.store(value, ordering: .relaxed) }
+}
+
+//@Suite(.serialized)
 struct UUIDv7Tests {
     // 1. 生成したUUIDのバージョンが7になっている
     @Test func versionIs7() {
@@ -27,33 +35,40 @@ struct UUIDv7Tests {
         }
     }
     
-    // 3. timeStampが現在時刻とほぼ一致する
-    // 時刻に依存するテストは別Issueで書き直す
-//    @Test func timeStampIsCloseToNow() throws {
-//        // _ = (0..<100_000).map { _ in UUIDv7Generator.generate() }
-//        let before = Date()
-//        let id = UUIDv7Generator.generate()
-//        let after = Date()
-//        
-//        let timeStamp = try #require(id.timeStamp, "v7のUUIDなのにtimeStampがnilを返した")
-//        
-//        #expect(before - 1e-3 < timeStamp)
-//        #expect(timeStamp < after + 1e-3)
-//    }
+    // 3. 注入した時刻がそのままエンコードされる
+    @Test func unixMillisecondsRoundTripsAtBitBoundaries() {
+        var values: [UInt64] = [0, (1 << 48) - 1]
+        for i in 0..<48 {
+            values.append(1 << i)        // i ビット目だけが立っている
+            values.append((1 << i) - 1)  // i ビット目より下が全部立っている
+        }
+        for T in values {
+            let core = UUIDv7Core(clock: { T })
+            #expect(core.generate().unixMilliseconds == T)
+        }
+    }
     
     // 4. 10万回連続で生成して、常に昇順になる
     @Test func monotonic() {
-        var ids = Array<UUID>()
-        ids.reserveCapacity(100000)
-        for _ in 0..<100000 {
-            ids.append(UUIDv7Generator.generate())
+        let ids = (0..<100000).map { _ in
+            UUIDv7Generator.generate()
         }
         
         #expect(zip(ids, ids.dropFirst()).allSatisfy(<))
     }
     
     // 5. カウンタが4095を超えても昇順が崩れない
-    // 時刻に依存するテストは別Issueで書き直す
+    @Test func counterOverflowAdvancesTimestamp() {
+        let T: UInt64 = 1_700_000_000_000
+        let core = UUIDv7Core(clock: { T })   // 時刻は動かない
+
+        let ids = (0..<4097).map { _ in core.generate() }
+
+        #expect(zip(ids, ids.dropFirst()).allSatisfy(<))
+        // 最初の4096個は T、4097個目は T+1 になっているはず
+        let unixMillisecondsList = ids.map { $0.unixMilliseconds }
+        #expect(unixMillisecondsList.dropLast(1).allSatisfy { $0 == T } && unixMillisecondsList.last! == T + 1)
+    }
     
     // 6. TaskGroupで並列に生成しても重複しない
     @Test func noDuplicatesAcrossTasks() async {
@@ -78,5 +93,21 @@ struct UUIDv7Tests {
     @Test func timeStampIsNilForNonV7() {
         let id = UUID()
         #expect(id.timeStamp == nil)
+        #expect(id.unixMilliseconds == nil)
+    }
+    
+    // 8. 時計が逆行しても昇順が崩れない
+    @Test func clockRollbackKeepsOrder() {
+        let T: UInt64 = .random(in: 0..<(1 << 48 - 10))
+        let clock = FakeClock(T + 10)
+        let core = UUIDv7Core(clock: clock.now)
+        
+        let id = core.generate()
+        
+        clock.set(T)
+        let retrogressed = core.generate()
+        
+        #expect(id < retrogressed)
+        #expect(retrogressed.unixMilliseconds == T + 10)
     }
 }
